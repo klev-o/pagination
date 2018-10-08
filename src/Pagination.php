@@ -9,6 +9,10 @@
 namespace konstantinLev\pagination;
 use Exception;
 
+/**
+ * Class Pagination
+ * @package konstantinLev\pagination
+ */
 class Pagination
 {
     /**
@@ -39,7 +43,27 @@ class Pagination
     /**
      * @var string Окончание запроса с учетом пагинации
      */
-    private $_pagEnd = ' LIMIT :limit, :countRows ';//todo??
+    private $_pagEnd = ' LIMIT :limit, :countRows ';
+
+    /**
+     * @var string класс для настройки css-свойств
+     */
+    private $_className = '';
+
+    /**
+     * @var int кол-во элементов справа и слева от активного
+     */
+    private $_leftRightNum = 4;
+
+    /**
+     * @var bool Показ информационного блока
+     */
+    private $_showInfo = true;
+
+    /**
+     * @var array элементы управления линк-пейджером
+     */
+    private $_controls = ['«','»'];
 
     /**
      * Pagination constructor.
@@ -51,9 +75,29 @@ class Pagination
     {
         $this->validate($query, $params);
         $this->buildQueryWithPagination($query);
-        $this->_countOnPage = (int)$params['countOnPage'];
-        $this->_totalCount  = (int)$params['totalCount'];
+        $this->_countOnPage  = (int)$params['countOnPage'];
+        $this->_totalCount   = (int)$params['totalCount'];
+        $this->_className    = !empty($params['className']) ? $params['className'] : '';
+        $this->_leftRightNum = !empty($params['leftRightNum']) ? (int)$params['leftRightNum'] : $this->_leftRightNum;
+        $this->_controls     = !empty($params['controls']) ? $params['controls'] : $this->_controls;
+        $this->_showInfo     = isset($params['showInfo']) ? $params['showInfo'] : $this->_showInfo;
         return $this;
+    }
+
+    public function demo()
+    {
+        $data = [];
+        $result = [];
+        for($i=0;$i < $this->_totalCount; $i++){
+            $data[$i]['title'] = 'Item '.($i+1);
+        }
+        $params = $this->getParams();
+        for($i = $params['limit']; $i < $params['countRows'] + $params['limit']; $i++){
+            if(!empty($data[$i])){
+                $result[] = $data[$i];
+            }
+        }
+        return $result;
     }
 
     /**
@@ -118,23 +162,24 @@ class Pagination
 
     /**
      * Отрисовка линк-пейджера (системы управления страницами)
-     * @param string $className - класс для настройки css-свойств
-     * @param int $leftRightNum - кол-во страниц справа и слева от активной страницы
      * @return string
      * @throws Exception
      */
-    public function drawLinkPager($className = '', $leftRightNum = 4)
+    public function drawLinkPager()
     {
         if($this->_totalCount == 0) return '';
-        if(!is_numeric($leftRightNum))throw new Exception('param leftRightNum be a numeric!');
-        if(!is_string($className)) throw new Exception('param className be a string!');
-        $leftRightNum = (int)$leftRightNum;
+
+        $leftRightNum = $this->_leftRightNum;
+        $controlLeft  = $this->_controls[0];
+        $controlRight = $this->_controls[1];
+        $className    = $this->_className;
+
         $result = '<div class="pagination-block">';
-        $result .= 'Текущая страница: '.$this->_params['cur_page'].' из '.$this->_params['total_pages'].'<br>';
+        $result .= '<div class="info" style="display: '.($this->_showInfo ? 'block' : 'none').'">Текущая страница: '.$this->_params['cur_page'].' из '.$this->_params['total_pages'].'</div>';
         $result .= '<ul class="pagination '.$className.'">';
         $linkBegin = $this->_params['pages'][1];
         $linkEnd = $this->_params['pages'][count($this->_params['pages'])];
-        $result .= '<li><a href="'.$linkBegin.'">«</a></li>';
+        $result .= '<li><a href="'.$linkBegin.'">'.$controlLeft.'</a></li>';
         //всего ссылок в линк-пейджере (активная ссылка + ссылки слева и справа от активной)
         $countLink = $leftRightNum * 2 + 1;
         if($this->_params['total_pages'] < $countLink){
@@ -165,23 +210,35 @@ class Pagination
                 }
             }
         }
-        $result .= '<li><a href="'.$linkEnd.'">»</a></li></ul></div>';
+        $result .= '<li><a href="'.$linkEnd.'">'.$controlRight.'</a></li></ul></div>';
         echo $result;
     }
 
     /**
+     * Валидация параметров
      * @param $query
      * @param $params
      * @throws Exception
      */
     private function validate($query, $params)
     {
-        if(empty($query)) throw new Exception('Missed query param!');
-        if(!is_string($query)) throw new Exception('query must be a string');
-        if(!isset($params['countOnPage'])) throw new Exception('Missed countOnPage param!');
-        if(!isset($params['totalCount'])) throw new Exception('Missed totalCount param!');
-        if(!is_numeric($params['countOnPage'])) throw new Exception('countOnPage must be a numeric!');
-        if(!is_numeric($params['totalCount'])) throw new Exception('totalCount must be a numeric!');
+        if(empty($query))                            throw new Exception('Missed query param!');
+        if(!is_string($query))                       throw new Exception('query must be a string');
+        if(!isset($params['countOnPage']))           throw new Exception('Missed countOnPage param!');
+        if(!isset($params['totalCount']))            throw new Exception('Missed totalCount param!');
+        if(!is_numeric($params['countOnPage']))      throw new Exception('countOnPage must be a numeric!');
+        if(!is_numeric($params['totalCount']))       throw new Exception('totalCount must be a numeric!');
+        if(!is_string($params['className']))         throw new Exception('param className be a string!');
+        if(isset($params['showInfo'])){
+            if(!is_bool($params['showInfo']))        throw new Exception('param showInfo be a bool!');
+        }
+        if(!empty($params['leftRightNum'])){
+            if(!is_numeric($params['leftRightNum'])) throw new Exception('leftRightNum must be a numeric!');
+        }
+        if(!empty($params['controls'])){
+            if(!is_array($params['controls']))       throw new Exception('controls must be array!');
+            if(count($params['controls']) !== 2)     throw new Exception('controls must contain 2 elements!');
+        }
     }
 
     /**
