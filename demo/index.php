@@ -8,12 +8,16 @@ $pag = new Pagination('demo', [
     'countOnPage' => 10,
     'totalCount' => 100,
     'className' => 'test',
-    'leftRightNum' => 3,
-    'controls' => ['сюда', 'туда'],
-
+    'leftRightNum' => 2,
+    'controls' => [
+        '<span class="glyphicon glyphicon-arrow-left"></span>',
+        '<span class="glyphicon glyphicon-arrow-right"></span>'
+    ],
 ]);
 $data = $pag->demo();
 ?>
+
+
 
 <!doctype html>
 <html lang="ru">

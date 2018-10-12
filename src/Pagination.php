@@ -15,6 +15,9 @@ use Exception;
  */
 class Pagination
 {
+    const DB_TYPE_MYSQL  = 'mysql';
+    const DB_TYPE_ORACLE = 'oracle';
+
     /**
      * @var int Кол-во записей для отображения на странице
      */
@@ -38,12 +41,12 @@ class Pagination
     /**
      * @var string Начало запроса с учетом пагинации
      */
-    private $_pagStart = ''; //todo for oracle DB
+    private $_pagStart = '';
 
     /**
      * @var string Окончание запроса с учетом пагинации
      */
-    private $_pagEnd = ' LIMIT :limit, :countRows ';
+    private $_pagEnd = '';
 
     /**
      * @var string класс для настройки css-свойств
@@ -65,6 +68,13 @@ class Pagination
      */
     private $_controls = ['«','»'];
 
+    private $_typesDB = [
+        'mysql',
+        'oracle'
+    ];
+
+    private $_typeDB = 'mysql';
+
     /**
      * Pagination constructor.
      * @param $query
@@ -74,13 +84,14 @@ class Pagination
     public function __construct($query, $params)
     {
         $this->validate($query, $params);
-        $this->buildQueryWithPagination($query);
         $this->_countOnPage  = (int)$params['countOnPage'];
         $this->_totalCount   = (int)$params['totalCount'];
         $this->_className    = !empty($params['className']) ? $params['className'] : '';
         $this->_leftRightNum = !empty($params['leftRightNum']) ? (int)$params['leftRightNum'] : $this->_leftRightNum;
         $this->_controls     = !empty($params['controls']) ? $params['controls'] : $this->_controls;
         $this->_showInfo     = isset($params['showInfo']) ? $params['showInfo'] : $this->_showInfo;
+        $this->_typeDB       = isset($params['db']) ? $params['db'] :  $this->_typeDB;
+        $this->buildQueryWithPagination($query);
         return $this;
     }
 
@@ -133,8 +144,7 @@ class Pagination
                 $cur_page = 1;
             }
 
-            $countRows = $rows_per_page;
-            $limit = $countRows * $cur_page - $countRows;
+            $this->setParamsForQuery($rows_per_page, $cur_page, $total_pages);
 
             $parts = parse_url($_SERVER['REQUEST_URI']);
             $queryParams = array();
@@ -150,14 +160,32 @@ class Pagination
             for($i = 1; $i <= $total_pages; $i++){
                 $pages[$i] = $uri . 'page=' . $i;
             }
-
-            $this->_params['countRows'] = $countRows;
-            $this->_params['limit'] = $limit;
-            $this->_params['total_pages'] = $total_pages;
-            $this->_params['cur_page'] = $cur_page;
             $this->_params['pages'] = isset($pages) ? $pages : '';
         }
         return $this->_params;
+    }
+
+    private function setParamsForQuery($rows_per_page, $cur_page, $total_pages)
+    {
+        switch ($this->_typeDB){
+            case self::DB_TYPE_MYSQL:
+                $countRows = $rows_per_page;
+                $limit = $countRows * $cur_page - $countRows;
+                $this->_params['countRows'] = $countRows;
+                $this->_params['limit'] = $limit;
+                $this->_params['total_pages'] = $total_pages;
+                $this->_params['cur_page'] = $cur_page;
+                break;
+            case self::DB_TYPE_ORACLE:
+                // значение первой записи для LIMIT
+                $from_f = ($cur_page - 1) * $rows_per_page;
+                $to_end = ($from_f == 0) ? $rows_per_page : ($from_f + $rows_per_page);
+                $this->_params['from_f'] = $from_f;
+                $this->_params['to_end'] = $to_end;
+                $this->_params['total_pages'] = $total_pages;
+                $this->_params['cur_page'] = $cur_page;
+                break;
+        }
     }
 
     /**
@@ -211,7 +239,7 @@ class Pagination
             }
         }
         $result .= '<li><a href="'.$linkEnd.'">'.$controlRight.'</a></li></ul></div>';
-        echo $result;
+        return $result;
     }
 
     /**
@@ -239,6 +267,9 @@ class Pagination
             if(!is_array($params['controls']))       throw new Exception('controls must be array!');
             if(count($params['controls']) !== 2)     throw new Exception('controls must contain 2 elements!');
         }
+        if(isset($params['db'])){
+            if(!in_array($params['db'], $this->_typesDB)) throw new Exception('unknown type db!');
+        }
     }
 
     /**
@@ -246,6 +277,16 @@ class Pagination
      */
     private function buildQueryWithPagination($query)
     {
+        switch ($this->_typeDB){
+            case self::DB_TYPE_MYSQL:
+                $this->_pagStart = '';
+                $this->_pagEnd = 'LIMIT :limit, :countRows ';
+                break;
+            case self::DB_TYPE_ORACLE:
+                $this->_pagStart = 'select * from (select rownum b, a.* from (';
+                $this->_pagEnd = ') a) where b> :from_f and b<= :to_end  ';
+                break;
+        }
         $this->_query = $this->_pagStart.$query.$this->_pagEnd;
     }
 }
