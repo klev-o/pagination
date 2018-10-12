@@ -92,6 +92,7 @@ class Pagination
         $this->_showInfo     = isset($params['showInfo']) ? $params['showInfo'] : $this->_showInfo;
         $this->_typeDB       = isset($params['db']) ? $params['db'] :  $this->_typeDB;
         $this->buildQueryWithPagination($query);
+        $this->getParams();
         return $this;
     }
 
@@ -117,6 +118,26 @@ class Pagination
     public function getQuery()
     {
         return $this->_query;
+    }
+
+    /**
+     * @return array
+     */
+    public function getParamsForQuery()
+    {
+        $data = [];
+        $params = $this->getParams();
+        switch ($this->_typeDB){
+            case self::DB_TYPE_MYSQL:
+                $data['limit'] = $params['limit'];
+                $data['countRows'] = $params['countRows'];
+                break;
+            case self::DB_TYPE_ORACLE:
+                $data['from_f'] = $params['from_f'];
+                $data['to_end'] = $params['to_end'];
+                break;
+        }
+        return $data;
     }
 
     /**
