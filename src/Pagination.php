@@ -19,60 +19,66 @@ class Pagination
     const DB_TYPE_ORACLE = 'oracle';
 
     /**
-     * @var int Кол-во записей для отображения на странице
+     * @var int Number of records to display on the page
      */
     private $_countOnPage = 0;
 
     /**
-     * @var int Всего кол-во записей
+     * @var int Total number of records
      */
     private $_totalCount = 0;
 
     /**
-     * @var string Строка запроса в бд
+     * @var string query
      */
     private $_query = '';
 
     /**
-     * @var null Параметры пагинации
+     * @var null Pagination options
      */
     private $_params = null;
 
     /**
-     * @var string Начало запроса с учетом пагинации
+     * @var string The beginning of the query with pagination
      */
     private $_pagStart = '';
 
     /**
-     * @var string Окончание запроса с учетом пагинации
+     * @var string The end of the query with pagination
      */
     private $_pagEnd = '';
 
     /**
-     * @var string класс для настройки css-свойств
+     * @var string Class name to configure css-properties
      */
     private $_className = '';
 
     /**
-     * @var int кол-во элементов справа и слева от активного
+     * @var int Number of elements to the right and left of the active in the link pager
      */
     private $_leftRightNum = 4;
 
     /**
-     * @var bool Показ информационного блока
+     * @var bool Show or not the information block (the current page and the total number of pages are displayed)
      */
     private $_showInfo = true;
 
     /**
-     * @var array элементы управления линк-пейджером
+     * @var array Link pager controls
      */
     private $_controls = ['«','»'];
 
+    /**
+     * @var array Possible database types
+     */
     private $_typesDB = [
         'mysql',
         'oracle'
     ];
 
+    /**
+     * @var string Database type used in the project
+     */
     private $_typeDB = 'mysql';
 
     /**
@@ -96,6 +102,10 @@ class Pagination
         return $this;
     }
 
+    /**
+     * Demonstration of the pagination module features
+     * @return array
+     */
     public function demo()
     {
         $data = [];
@@ -113,6 +123,7 @@ class Pagination
     }
 
     /**
+     * Getting a prepared query
      * @return string
      */
     public function getQuery()
@@ -121,6 +132,7 @@ class Pagination
     }
 
     /**
+     * Getting parameters for query execution
      * @return array
      */
     public function getParamsForQuery()
@@ -141,23 +153,24 @@ class Pagination
     }
 
     /**
+     * Getting parameters for query execution and drawing link-pager
      * @return null|array
      */
     public function getParams()
     {
         if(is_null($this->_params)){
-            //сколько записей отображать на одной странице
+            // how many entries to display on one page
             $rows_per_page = $this->_countOnPage;
 
-            // общее количество записей
+            // total records
             $total_rows = $this->_totalCount;
 
-            // общее количество страниц
+            // total pages
             $total_pages = ceil($total_rows / $rows_per_page);
 
             if($total_pages < 1) $total_pages = 1;
 
-            // номер текущей страницы
+            //current page number
             if (isset($_GET['page'])){
                 $cur_page = is_numeric($_GET['page']) ? (int)$_GET['page'] : 1;
                 if ($cur_page < 1 || $cur_page > $total_pages) $cur_page = 1;
@@ -165,7 +178,7 @@ class Pagination
                 $cur_page = 1;
             }
 
-            $this->setParamsForQuery($rows_per_page, $cur_page, $total_pages);
+            $this->setParams($rows_per_page, $cur_page, $total_pages);
 
             $parts = parse_url($_SERVER['REQUEST_URI']);
             $queryParams = array();
@@ -177,7 +190,6 @@ class Pagination
             if (count($queryParams)){
                 $uri .= http_build_query($queryParams) . "&";
             }
-            // массив со ссылками на страницы
             for($i = 1; $i <= $total_pages; $i++){
                 $pages[$i] = $uri . 'page=' . $i;
             }
@@ -186,7 +198,13 @@ class Pagination
         return $this->_params;
     }
 
-    private function setParamsForQuery($rows_per_page, $cur_page, $total_pages)
+    /**
+     * Setting parameters for query execution and drawing link-pager
+     * @param $rows_per_page
+     * @param $cur_page
+     * @param $total_pages
+     */
+    private function setParams($rows_per_page, $cur_page, $total_pages)
     {
         switch ($this->_typeDB){
             case self::DB_TYPE_MYSQL:
@@ -198,7 +216,6 @@ class Pagination
                 $this->_params['cur_page'] = $cur_page;
                 break;
             case self::DB_TYPE_ORACLE:
-                // значение первой записи для LIMIT
                 $from_f = ($cur_page - 1) * $rows_per_page;
                 $to_end = ($from_f == 0) ? $rows_per_page : ($from_f + $rows_per_page);
                 $this->_params['from_f'] = $from_f;
@@ -210,7 +227,7 @@ class Pagination
     }
 
     /**
-     * Отрисовка линк-пейджера (системы управления страницами)
+     * Link Pager (Page Management)
      * @return string
      * @throws Exception
      */
@@ -229,7 +246,7 @@ class Pagination
         $linkBegin = $this->_params['pages'][1];
         $linkEnd = $this->_params['pages'][count($this->_params['pages'])];
         $result .= '<li><a href="'.$linkBegin.'">'.$controlLeft.'</a></li>';
-        //всего ссылок в линк-пейджере (активная ссылка + ссылки слева и справа от активной)
+        /***total links in link-pager (active link + links to the left and right of the active)**/
         $countLink = $leftRightNum * 2 + 1;
         if($this->_params['total_pages'] < $countLink){
             for($i = 1; $i <= $this->_params['total_pages']; $i++){
@@ -240,13 +257,13 @@ class Pagination
                 }
             }
         } else {
-            /***левый порог***/
+            /***left threshold***/
             $leftOffset = $this->_params['cur_page'] - $leftRightNum;
             if($leftOffset <= 0) $leftOffset = 1;
             if ($this->_params['cur_page'] > ($this->_params['total_pages'] - $leftRightNum)){
                 $leftOffset = $this->_params['total_pages'] - $countLink + 1;
             }
-            /***правый порог***/
+            /***right threshold***/
             $rightOffset = $this->_params['cur_page'] + $leftRightNum;
             if($this->_params['cur_page'] <= $leftRightNum) $rightOffset = $countLink;
             if($rightOffset > $this->_params['total_pages']) $rightOffset = $this->_params['total_pages'];
@@ -264,7 +281,7 @@ class Pagination
     }
 
     /**
-     * Валидация параметров
+     * Parameter validation
      * @param $query
      * @param $params
      * @throws Exception
@@ -294,6 +311,7 @@ class Pagination
     }
 
     /**
+     * Build sql query with pagination
      * @param $query
      */
     private function buildQueryWithPagination($query)
