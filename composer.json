@@ -1,0 +1,28 @@
+{
+  "name": "konstantinLev/pagination",
+  "description": "Simple pagination module",
+  "type": "extension",
+  "keywords": [
+    "pagination",
+    "php"
+  ],
+  "homepage": "https://github.com/KonstantinLev/pagination",
+  "license": "GPLv2",
+  "authors": [
+    {
+      "name": "Levachin Konstantin",
+      "email": "x-stels@bk.ru",
+      "role": "Developer"
+    }
+  ],
+  "support": {
+    "source": "https://github.com/KonstantinLev/pagination",
+    "issues": "https://github.com/KonstantinLev/pagination/issues"
+  },
+  "require": {
+    "php": ">=5.6.0"
+  },
+  "autoload": {
+    "psr-4": {"konstantinLev\\pagination\\": "src/"}
+  }
+}
